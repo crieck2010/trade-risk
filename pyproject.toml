@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trade-risk"
+version = "0.1.0"
+description = "Portfolio risk engine: pre-trade limits, risk-based sizing, drawdown guards"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "crieck2010" }]
+requires-python = ">=3.10"
+keywords = ["trading", "risk-management", "position-sizing", "drawdown"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Office/Business :: Financial",
+]
+
+[project.urls]
+Homepage = "https://github.com/crieck2010/trade-risk"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
