@@ -148,3 +148,54 @@ strategy → risk gate → backtest with a risk-backed sizer.
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md). Current version: **0.1.0**.
+
+## The maths
+
+**What you learn.** Two numbers before any order goes out: **how big**
+should this position be, and **is it allowed**. Sizing turns a signal into
+a quantity; limits turn a quantity into a yes/no (or a smaller quantity).
+
+**Why it matters.** Position sizing is where returns are actually made or
+lost — a great signal with reckless sizing is just a fast way to hit the
+drawdown guard. The maths below is closed-form and auditable: every sizer
+is one line of arithmetic, every limit is one inequality, and the
+evaluation order is fixed so a veto is always explainable.
+
+**The maths.**
+
+- *Fixed-fractional* (`FixedFractionalSizer`): `quantity = equity × risk_pct / (ATR × atr_multiple)`
+  — a stop-out at `atr_multiple` ATRs loses exactly `risk_pct` of equity
+  (defaults: 1% risk, 2× ATR stop).
+- *Volatility targeting* (`VolatilityTargetSizer`): `quantity = equity × target_vol / (volatility × price)`
+  — the position carries `target_vol` (default 15% annualized) regardless of
+  the asset's own volatility.
+- *Fractional Kelly* (`KellySizer`): `f = fraction × (p − (1−p) / payoff)`,
+  `quantity = equity × min(f, cap) / price` — the log-growth-optimal bet
+  fraction from win probability `p` and payoff ratio `b` (avg win / avg
+  loss), halved by default (`fraction=0.5`) and capped at 25% of equity;
+  zero when the edge is non-positive.
+- *Risk parity* (`analytics.inverse_vol_weights`): `w_i = (1/vol_i) / Σ(1/vol)`
+  — each position contributes equally to portfolio volatility under the
+  (strong) assumption of uncorrelated assets.
+- *Concentration* (`analytics.herfindahl`): `Σ w_i²`, the sum of squared
+  portfolio weights — 1.0 is a single bet, `1/n` is perfectly spread.
+- *Limits* are inequalities on notional/equity: per-symbol ≤ `max_pct`
+  (`MaxPositionNotional`), `Σ|notional|` ≤ cap (`MaxGrossExposure`),
+  directional ≤ cap (`MaxNetExposure`), daily loss and peak-to-trough
+  drawdown halts from `day_start_equity` / `peak_equity`.
+- *Evaluation order* (`RiskManager.evaluate`): sizer first, then each limit
+  in order — first veto wins, a limit may *resize* instead of vetoing
+  (later limits see the resized quantity), and EXIT intents are never
+  blocked. `DrawdownGuard` tiers warn → halt → flatten at increasing
+  drawdown thresholds.
+
+**Honest limitations.**
+
+- There is no VaR/ES engine here — tail-risk simulation lives in
+  trade-montecarlo; these limits are all notional/drawdown-based.
+- Sizers are only as good as their inputs: garbage volatility, ATR, or
+  win-probability estimates produce precisely-sized garbage.
+- `RiskOverlay`'s virtual position tracking assumes fills follow approved
+  signals — reconcile against real fills before live use.
+- Inverse-volatility weighting ignores correlations, so it over-allocates
+  to clusters of correlated assets.
