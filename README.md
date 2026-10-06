@@ -104,6 +104,38 @@ mon = DrawdownMonitor(warn=0.05, halt=0.10, flatten=0.15)
 dd, status = mon.update(equity)   # status: ok | warn | halt | flatten
 ```
 
+## ATR trailing stops (`trade_risk.trailing`)
+
+Pure exit engine: `stop = peak − multiplier × ATR` for longs
+(`trough + multiplier × ATR` for shorts), ratcheting monotonically —
+a long stop never moves down, a short stop never moves up.
+
+```python
+from trade_risk.trailing import TrailingStop, atr_wilder
+
+stops = {}
+# on fill:
+stops["AAPL"] = TrailingStop("long", multiplier=3.0, period=14, activation_pct=0.0)
+
+# on each bar:
+stop = stops["AAPL"].update(high, low, close)
+if stop is not None and low <= stop:
+    exit_position("AAPL")   # your own order path — this module never submits
+```
+
+- `update` returns **`None`** during ATR warmup (fewer than `period`
+  bars) or before the optional arm-after-+X% gate (`activation_pct`):
+  never a garbage stop. Default `0.0` arms immediately — protects
+  capital from bar one but gets whipped in chop; arming late (e.g.
+  `0.05`) avoids premature stop-outs but leaves early reversals
+  unprotected (see the module docstring for the full tradeoff).
+- Negative-price-safe: true ranges use abs-based math, so WTI-style
+  negative prints stay non-negative and never flip signs.
+- Consumed by **import** from `trade-backtest` (per-position tracker fed
+  from the simulated bar stream) and `trade-paper` (fed from the live
+  bar loop, exit orders submitted through the paper layer's own path).
+  The logic is never copied into either repo.
+
 ## Agent registry
 
 ```python
@@ -147,7 +179,7 @@ strategy → risk gate → backtest with a risk-backed sizer.
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Current version: **0.1.0**.
+See [CHANGELOG.md](CHANGELOG.md). Current version: **0.2.0**.
 
 ## The maths
 
@@ -188,6 +220,12 @@ evaluation order is fixed so a veto is always explainable.
   (later limits see the resized quantity), and EXIT intents are never
   blocked. `DrawdownGuard` tiers warn → halt → flatten at increasing
   drawdown thresholds.
+- *ATR trailing stop* (`TrailingStop`): Wilder ATR
+  (`ATR_t = (ATR_{t-1} × (p−1) + TR_t) / p`, seeded by the mean of the
+  first `p` true ranges); long stop `= peak(high) − multiplier × ATR`
+  ratcheted upward only, short stop `= trough(low) + multiplier × ATR`
+  ratcheted downward only. Undefined (returns `None`) for the first
+  `period` bars and until the `activation_pct` gate opens.
 
 **Honest limitations.**
 

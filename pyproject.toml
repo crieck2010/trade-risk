@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "trade-risk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Portfolio risk engine: pre-trade limits, risk-based sizing, drawdown guards"
 readme = "README.md"
 license = { text = "MIT" }

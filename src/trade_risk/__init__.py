@@ -33,8 +33,9 @@ from .base import (
     RiskDecision,
 )
 from .manager import RiskManager
+from .trailing import TrailingStop, atr_wilder, true_range
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "LONG",
     "SHORT",
@@ -44,5 +45,8 @@ __all__ = [
     "PositionState",
     "RiskDecision",
     "RiskManager",
+    "TrailingStop",
+    "atr_wilder",
+    "true_range",
     "__version__",
 ]
